@@ -43,7 +43,6 @@ class KNNClassifier:
         return predictions, distances
 
 
-
 # Min-Max Normalisation
 def min_max_normalisation(train_data, test_data):
     minimum = train_data.min(axis=0)
@@ -97,12 +96,12 @@ def main():
     args = parse_arguments()
 
     # Initialising Train Data into pandas DataFrame
-    train = pd.read_csv(args.train_file)
+    train = pd.read_csv('data_part1/' + args.train_file)
     X_train = train.drop(columns='class')
     y_train = train['class']
 
     # Initialising Test Data into pandas DataFrame
-    test = pd.read_csv(args.test_file)
+    test = pd.read_csv('data_part1/' + args.test_file)
     X_test = test.drop(columns='class')
     y_test = test['class']
 
@@ -111,17 +110,24 @@ def main():
 
     # Perform KNN Classification
     knn = KNNClassifier(args.k).fit(X_train_scaled, y_train)
-    y_pred_train, distances_train = knn.predict(X_train_scaled)
-    y_pred_test, distances_test = knn.predict(X_test_scaled)
-    print(f'Train Distances: {distances_train}')
-    print(f'Test Distances: {distances_test}')
+    y_pred, distances = knn.predict(X_test_scaled)
+
+    distance_dict = {'y': y_test, 'y_pred': y_pred}
+    for distance in distances:
+        for i in range(args.k):
+            key = "distance" + str(i + 1)
+            if distance_dict.get(key) is None:
+                distance_dict[key] = []
+            distance_dict[key].append(distance[i])
+
+    # Converting data collected into a csv output file with the given label
+    df = pd.DataFrame(distance_dict)
+    print(df)
+    df.to_csv('data_part1/' + args.out_file, index=False)
 
     # Get accuracy
-    total_accuracy_train, class_accuracy_train = accuracy_calculation(y_train, y_pred_train)
-    total_accuracy_test, class_accuracy_test = accuracy_calculation(y_test, y_pred_test)
-    print(f'Overall Accuracy: {total_accuracy_train * 100:.2f}%\nClass Accuracies: {class_accuracy_train}')
-    print(f'Overall Accuracy: {total_accuracy_test*100:.2f}%\nClass Accuracies: {class_accuracy_test}')
-
+    total_accuracy_test, class_accuracy_test = accuracy_calculation(y_test, y_pred)
+    print(f'Overall Accuracy: {total_accuracy_test * 100:.2f}%\nClass Accuracies: {class_accuracy_test}')
 
 
 if __name__ == "__main__":

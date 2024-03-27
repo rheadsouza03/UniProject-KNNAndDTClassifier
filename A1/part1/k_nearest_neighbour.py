@@ -3,6 +3,7 @@
 # Username: dsouzrhea
 
 """
+K-Nearest Neighbour Classifier Algorithm
 Scikit library was restricted for this project.
 """
 
@@ -15,9 +16,11 @@ import argparse as ap
 # KNN Classifier
 class KNNClassifier:
     def __init__(self, k):
+        self.y_train = None
+        self.X_train = None
         self.k = k
 
-    def euclidean(self, point, data):
+    def __euclidean(self, point, data):
         return np.sqrt(np.sum((data - point) ** 2, axis=1))
 
     def fit(self, X_train, y_train):
@@ -30,7 +33,7 @@ class KNNClassifier:
         predictions = []
         distances = []
         for x in X_test:
-            dist = self.euclidean(x, self.X_train)
+            dist = self.__euclidean(x, self.X_train)
             # Sort distances and get indices of k nearest neighbors
             nearest_indices = np.argsort(dist)[:self.k]
             # Retrieve labels of k nearest neighbors
@@ -53,6 +56,7 @@ def min_max_normalisation(train_data, test_data):
     return X_train, X_test
 
 
+# Parse Commandline arguments
 def parse_arguments():
     parser = ap.ArgumentParser(description='KNN Classification')
 
@@ -65,8 +69,9 @@ def parse_arguments():
     return parser.parse_args()
 
 
+# Calculate the overall and class accuracy
 def accuracy_calculation(y_test, predictions, num_classes=None):
-    # Calculate overall accuracy
+    # Overall accuracy
     accuracy = np.mean(y_test == predictions)
 
     # If num_classes is not provided, infer it from y_test and predictions
@@ -85,14 +90,31 @@ def accuracy_calculation(y_test, predictions, num_classes=None):
     class_accuracy = {}
     # Calculate and print accuracy for each class
     for class_label, counts in class_counts.items():
-        accuracy_for_class = counts["true_positives"] / counts["total"] if counts["total"] > 0 else 0
+        accuracy_for_class = str((counts["true_positives"] / counts["total"])*100)+"%" if counts["total"] > 0 else "0%"
         class_accuracy[class_label] = accuracy_for_class
 
     return accuracy, class_accuracy
 
 
+# Main method in which the program is run from
+
 def main():
-    # Parse commandline arguments
+    """
+    This method will print the structure of the output file before creation
+    and will print the accuracy of the K-Nearest Classification.
+
+    Ensure the command line arguments are present.
+    Expected structure:
+        % python k_nearest_neighbour.py <train-data>.csv <test-data>.csv <output-file>.csv <k-value>
+    For Example:
+        For k==1:
+        % python k_nearest_neighbour.py wine_train.csv wine_test.csv knn1_test.csv 1
+        OR
+        % python k_nearest_neighbour.py wine_train.csv wine_train.csv knn1_train.csv 1
+
+    ## Note: The given files are expected to be in the 'data_part1/' directory
+    """
+    # Gets the expected parameters from the terminal
     args = parse_arguments()
 
     # Initialising Train Data into pandas DataFrame
@@ -112,6 +134,7 @@ def main():
     knn = KNNClassifier(args.k).fit(X_train_scaled, y_train)
     y_pred, distances = knn.predict(X_test_scaled)
 
+    # Creates a dictionary with the required information for the output file
     distance_dict = {'y': y_test, 'y_pred': y_pred}
     for distance in distances:
         for i in range(args.k):
@@ -124,10 +147,11 @@ def main():
     df = pd.DataFrame(distance_dict)
     print(df)
     df.to_csv('data_part1/' + args.out_file, index=False)
+    print(f"The output information above has been saved to the file provided: {args.out_file}\n")
 
-    # Get accuracy
+    # Print accuracy
     total_accuracy_test, class_accuracy_test = accuracy_calculation(y_test, y_pred)
-    print(f'Overall Accuracy: {total_accuracy_test * 100:.2f}%\nClass Accuracies: {class_accuracy_test}')
+    print(f'Accuracy Information:\nOverall Accuracy - {total_accuracy_test * 100:.2f}%\nClass Accuracies - {class_accuracy_test}')
 
 
 if __name__ == "__main__":

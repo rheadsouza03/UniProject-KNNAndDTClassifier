@@ -20,7 +20,7 @@ class DecisionTree:
     # TreeNode private inner class
     class _TreeNode:
         def __init__(self, class_count, parent_node=None,
-                     split_feature: str = None, split_feature_value=None,
+                    split_feature_value=None, split_feature: str = None,
                      child_nodes: list = None, information_gain=0, entropy=0.0):
             self.class_count = class_count
             self.parent_node = parent_node
@@ -107,7 +107,6 @@ class DecisionTree:
 
         return left_subset, right_subset
 
-
     # Building the train datas decision tree
     def _find_best_split(self, class_counts, dataset, features):
         """
@@ -159,26 +158,28 @@ class DecisionTree:
             left_subset, right_subset = self._split_data(data, split_feature, 0)
 
             self._build_script += f"{indentation}{split_feature} (IG: {information_gain:.4f}, Entropy: {entropy:.4f})\n"
+
+            # Update info
             features.remove(split_feature)
-            # Creating left node
-            left_node = self._TreeNode(self._calculate_class_counts(left_subset['class']), parent_node=node,
-                                       split_feature=split_feature, split_feature_value=0)
-            self._build_script += f"{indentation}--{split_feature} == {left_node.split_feature_value}--\n"
-            self._build_tree(left_subset, features.copy(), left_node, current_tree_depth + 1)
-
-            # Creating right node
-            right_node = self._TreeNode(self._calculate_class_counts(right_subset['class']), parent_node=node,
-                                        split_feature=split_feature, split_feature_value=1)
-            self._build_script += f"{indentation}--{split_feature} == {right_node.split_feature_value}--\n"
-            self._build_tree(right_subset, features.copy(), right_node, current_tree_depth + 1)
-
-            # Update node and features
-            node.child_nodes = [left_node, right_node]
             node.split_feature = split_feature
             node.entropy = entropy
             node.information_gain = information_gain
+
+            # Creating left node
+            left_node = self._TreeNode(self._calculate_class_counts(left_subset['class']), parent_node=node, split_feature_value=0)
+            self._build_script += f"{indentation}--{split_feature} == {left_node.split_feature_value}--\n"
+            left_node = self._build_tree(left_subset, features.copy(), left_node, current_tree_depth + 1)
+
+            # Creating right node
+            right_node = self._TreeNode(self._calculate_class_counts(right_subset['class']), parent_node=node, split_feature_value=1)
+            self._build_script += f"{indentation}--{split_feature} == {right_node.split_feature_value}--\n"
+            right_node = self._build_tree(right_subset, features.copy(), right_node, current_tree_depth + 1)
+
+            # Update node and features
+            node.child_nodes = [left_node, right_node]
         if (current_tree_depth > 0) & (node.child_nodes is None):
             self._build_script += f"{indentation}leaf{node.class_count}\n"
+        return node
 
     def get_script(self):
         '''
@@ -196,20 +197,30 @@ class DecisionTree:
         self.dataset = data
         self.features = data.columns.tolist()
         self.features.remove("class")
-        self.root = self._TreeNode(self._calculate_class_counts(data['class']))
-        self._build_tree(data, self.features, self.root)
+        self.root = self._build_tree(data, self.features.copy(), self._TreeNode(self._calculate_class_counts(data['class'])))
         return self
 
-    def traverse_tree(self, instance, features, tree_node):
+    def _traverse_tree(self, instance, features, tree_node):
+        if tree_node.split_feature is None:
+            return tree_node.class_count
+
         feature_index = features.index(tree_node.split_feature)
         for child in tree_node.child_nodes:
-            pass
+            if child.split_feature_value == instance[feature_index]:
+                features.remove(tree_node.split_feature)
+                return self._traverse_tree(instance, features, child)
+
     def predict(self, X) -> pd.DataFrame:
-        predictions = {'class':[]}
+        predictions = []
         X_test = np.array(X)
         for x in X_test:
-            print(x)
-        return pd.DataFrame(predictions)
+            class_count = self._traverse_tree(x, self.features.copy(), self.root)
+            for (key, value) in class_count.items():
+                if value != 0:
+                    predictions.append(key)
+                    break
+
+        return predictions
 
 
 # Commandline arguments
@@ -230,7 +241,7 @@ def accuracy_calculation(y_test, predictions, num_classes=None):
 
     # If num_classes is not provided, infer it from y_test and predictions
     if num_classes is None:
-        num_classes = max(np.max(y_test), np.max(predictions))
+        num_classes = max(np.max(y_test), np.max(predictions)) + 1
 
     # Initialize dictionaries to store counts of true positives, and total samples for each class
     class_counts = {class_label: {"true_positives": 0, "total": 0} for class_label in range(0, num_classes)}
@@ -253,7 +264,7 @@ def accuracy_calculation(y_test, predictions, num_classes=None):
 def save_tree(string, filename):
     with open('data_part2/' + filename, 'w') as file:
         file.write(string)
-    print("File created successfully. Can be found in: data_part2/"+filename)
+    print("File created successfully. Can be found in: data_part2/" + filename)
 
 
 # main() method
@@ -288,6 +299,8 @@ def main():
     save_tree(tree_string, args.out_file)
 
     y_pred = dt.predict(X_test)
+    accuracy, class_accuracy = accuracy_calculation(y_test, y_pred)
+    print(f'Accuracy Information:\nOverall Accuracy - {accuracy * 100:.2f}%\nClass Accuracies - {class_accuracy}')
 
 
 if __name__ == "__main__":

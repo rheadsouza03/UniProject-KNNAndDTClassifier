@@ -1,7 +1,5 @@
 # Course: COMP307
 # Name: Rhea D'Souza
-# Student ID: 300627012
-# Username: dsouzrhea
 
 """
 Decision Tree Classification Algorithm

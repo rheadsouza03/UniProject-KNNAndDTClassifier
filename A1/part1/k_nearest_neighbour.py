@@ -1,6 +1,4 @@
 # Name: Rhea D'Souza
-# Student ID: 300627012
-# Username: dsouzrhea
 
 """
 K-Nearest Neighbour Classifier Algorithm
